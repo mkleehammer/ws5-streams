@@ -3,10 +3,13 @@
 
 const test = require('tape-catch');
 
-var ReadableStream = require('../lib/readable-stream.js');
-var RandomPushSource = require('./utils/random-push-source').RandomPushSource;
-var readableStreamToArray = require('./utils/readable-stream-to-array').readableStreamToArray;
-var sequentialReadableStream = require('./utils/sequential-rs').sequentialReadableStream;
+var ReadableStream = require('../lib/readable-stream').ReadableStream;
+var CountQueuingStrategy = require('../lib/count-queuing-strategy');
+
+var RandomPushSource = require('./utils/random-push-source');
+var readableStreamToArray = require('./utils/readable-stream-to-array');
+var sequentialReadableStream = require('./utils/sequential-rs');
+
 
 test('ReadableStream can be constructed with no arguments', function(t) {
   t.plan(1);
@@ -142,7 +145,7 @@ test('ReadableStream avoid redundant pull call', function(t) {
 
   // Use setTimeout to ensure we run after any promises.
   setTimeout(function() {
-    t.equal(pullCount, 1, 'pull should not be called more than once');
+    t.equal(pullCount, 1, 'pull should not be called more than once (' + pullCount + ')');
     t.end();
   }, 50);
 });
@@ -184,6 +187,7 @@ test('ReadableStream pull throws an error', function(t) {
 
 test('ReadableStream adapting a push source', function(t) {
   var pullChecked = false;
+
   const randomSource = new RandomPushSource(8);
 
   const rs = new ReadableStream({
@@ -231,8 +235,7 @@ test('ReadableStream adapting a sync pull source', function(t) {
     t.equal(rs.state, 'closed', 'stream should be closed');
     t.equal(rs.source.closed, true, 'source should be closed');
     t.deepEqual(chunks, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 'got the expected 10 chunks');
-
-    t.end();
+    return t.end();
   });
 });
 
@@ -243,7 +246,6 @@ test('ReadableStream adapting an async pull source', function(t) {
     t.equal(rs.state, 'closed', 'stream should be closed');
     t.equal(rs.source.closed, true, 'source should be closed');
     t.deepEqual(chunks, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 'got the expected 10 chunks');
-
     t.end();
   });
 });
@@ -356,9 +358,8 @@ test('ReadableStream pull rejection makes stream errored', function(t) {
   t.equal(rs.state, 'waiting', 'stream starts out waiting');
 
   rs.closed.then(
-    function() {
-      return t.fail('.closed should not fulfill'), function(e) { t.equal(e, theError, '.closed should reject with the error'); };
-    }
+    function() { t.fail('.closed should not fulfill'); },
+    function(e) { t.equal(e, theError, '.closed should reject with the error'); }
   );
 });
 
@@ -695,10 +696,8 @@ test('ReadableStream errors in shouldApplyBackpressure cause ready to fulfill an
   );
 
   rs.closed.then(
-    function(v) {
-      return t.fail('closed should not be fulfilled'),
-      function(e) { t.equal(e, thrownError, 'closed should be rejected with the thrown error'); };
-    }
+    function(v) { return t.fail('closed should not be fulfilled'); },
+    function(e) { t.equal(e, thrownError, 'closed should be rejected with the thrown error'); }
   );
 });
 
@@ -746,9 +745,10 @@ test('ReadableStream should call underlying source methods as methods', function
 
   var theSource;
 
-  function Source() {}
+  function Source() {
+  }
 
-  Source.prototype = Object.define(null, {
+  Source.prototype = Object.create(null, {
     start: {
       value: function(enqueue) {
         t.equal(this, theSource, 'start() should be called with the correct this');

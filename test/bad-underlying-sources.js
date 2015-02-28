@@ -1,11 +1,31 @@
+
+'use strict';
+
+var ReadableStream = require('../lib/readable-stream').ReadableStream;
+
 const test = require('tape-catch');
 
-test('Throwing underlying source start getter', t => {
+test('Throwing underlying source start getter', function(t) {
   const theError = new Error('a unique string');
 
-  t.throws(() => {
+  t.throws(function() {
+    new ReadableStream(Object.create(null, {
+      start: {
+        get: function() {
+          throw theError;
+        }
+      }
+    }));
+  }, /a unique string/);
+  t.end();
+});
+
+test('Throwing underlying source start method', function(t) {
+  const theError = new Error('a unique string');
+
+  t.throws(function() {
     new ReadableStream({
-      get start() {
+      start: function() {
         throw theError;
       }
     });
@@ -13,85 +33,76 @@ test('Throwing underlying source start getter', t => {
   t.end();
 });
 
-test('Throwing underlying source start method', t => {
-  const theError = new Error('a unique string');
+test('Throwing underlying source pull getter (initial pull)', function(t) {
+  t.plan(1);
 
-  t.throws(() => {
-    new ReadableStream({
-      start() {
+  const theError = new Error('a unique string');
+  const rs = new ReadableStream(Object.create(null, {
+    pull: {
+      get: function() {
         throw theError;
       }
-    });
-  }, /a unique string/);
-  t.end();
+    }
+  }));
+
+  rs.closed.then(
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
+  );
 });
 
-test('Throwing underlying source pull getter (initial pull)', t => {
+test('Throwing underlying source pull method (initial pull)', function(t) {
   t.plan(1);
 
   const theError = new Error('a unique string');
   const rs = new ReadableStream({
-    get pull() {
+    pull: function() {
       throw theError;
     }
   });
 
   rs.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
   );
 });
 
-test('Throwing underlying source pull method (initial pull)', t => {
-  t.plan(1);
-
-  const theError = new Error('a unique string');
-  const rs = new ReadableStream({
-    pull() {
-      throw theError;
-    }
-  });
-
-  rs.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying source pull getter (second pull)', t => {
+test('Throwing underlying source pull getter (second pull)', function(t) {
   t.plan(3);
 
   const theError = new Error('a unique string');
   let counter = 0;
-  const rs = new ReadableStream({
-    get pull() {
+  const rs = new ReadableStream(Object.create(null, {
+    pull: {
+      get: function() {
       ++counter;
       if (counter === 1) {
-        return enqueue => enqueue('a');
+        return function(enqueue) { enqueue('a'); };
       }
 
       throw theError;
+      }
     }
-  });
+  }));
 
-  rs.ready.then(() => {
+  rs.ready.then(function() {
     t.equal(rs.state, 'readable', 'sanity check: the stream becomes readable without issue');
     t.equal(rs.read(), 'a', 'the initially-enqueued chunk can be read from the stream');
   });
 
   rs.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
   );
 });
 
-test('Throwing underlying source pull method (second pull)', t => {
+test('Throwing underlying source pull method (second pull)', function(t) {
   t.plan(3);
 
   const theError = new Error('a unique string');
   let counter = 0;
   const rs = new ReadableStream({
-    pull(enqueue) {
+    pull: function(enqueue) {
       ++counter;
       if (counter === 1) {
         enqueue('a');
@@ -101,79 +112,110 @@ test('Throwing underlying source pull method (second pull)', t => {
     }
   });
 
-  rs.ready.then(() => {
+  rs.ready.then(function() {
     t.equal(rs.state, 'readable', 'sanity check: the stream becomes readable without issue');
     t.equal(rs.read(), 'a', 'the initially-enqueued chunk can be read from the stream');
   });
 
   rs.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
   );
 });
 
-test('Throwing underlying source cancel getter', t => {
+test('Throwing underlying source cancel getter', function(t) {
+  t.plan(1);
+
+  const theError = new Error('a unique string');
+  const rs = new ReadableStream(Object.create(null, {
+    cancel: {
+      get: function() {
+        throw theError;
+      }
+    }
+  }));
+
+  rs.cancel().then(
+    function() { t.fail('cancel should not fulfill'); },
+    function(r) { t.equal(r, theError, 'cancel should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying source cancel method', function(t) {
   t.plan(1);
 
   const theError = new Error('a unique string');
   const rs = new ReadableStream({
-    get cancel() {
+    cancel: function() {
       throw theError;
     }
   });
 
   rs.cancel().then(
-    () => t.fail('cancel should not fulfill'),
-    r => t.equal(r, theError, 'cancel should reject with the thrown error')
+    function() { t.fail('cancel should not fulfill'); },
+    function(r) { t.equal(r, theError, 'cancel should reject with the thrown error'); }
   );
 });
 
-test('Throwing underlying source cancel method', t => {
-  t.plan(1);
-
-  const theError = new Error('a unique string');
-  const rs = new ReadableStream({
-    cancel() {
-      throw theError;
-    }
-  });
-
-  rs.cancel().then(
-    () => t.fail('cancel should not fulfill'),
-    r => t.equal(r, theError, 'cancel should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying source strategy getter', t => {
+test('Throwing underlying source strategy getter', function(t) {
   t.plan(2);
 
   const theError = new Error('a unique string');
 
-  const rs = new ReadableStream({
-    start(enqueue) {
-      t.throws(() => enqueue('a'), /a unique string/);
+  const rs = new ReadableStream(Object.create(null, {
+    start: {
+      value: function(enqueue) {
+        t.throws(function() { enqueue('a'); }, /a unique string/);
+      }
     },
-    get strategy() {
-      throw theError;
+    strategy: {
+      get: function() {
+        throw theError;
+      }
     }
+  }));
+
+  t.equal(rs.state, 'errored', 'state should be errored');
+});
+
+test('Throwing underlying source strategy.size getter', function(t) {
+  t.plan(2);
+
+  const theError = new Error('a unique string');
+  const rs = new ReadableStream({
+    start: function(enqueue) {
+      t.throws(function() { enqueue('a'); }, /a unique string/);
+    },
+    strategy: Object.create(null, {
+      size: {
+        get: function() {
+          throw theError;
+        }
+      },
+      shouldApplyBackpressure: {
+        value: function() {
+          return true;
+        }
+      }
+    })
   });
 
   t.equal(rs.state, 'errored', 'state should be errored');
 });
 
-test('Throwing underlying source strategy.size getter', t => {
+test('Throwing underlying source strategy.size method', function(t) {
   t.plan(2);
 
   const theError = new Error('a unique string');
   const rs = new ReadableStream({
-    start(enqueue) {
-      t.throws(() => enqueue('a'), /a unique string/);
+    start: function(enqueue) {
+      t.throws(function() { enqueue('a'); }, /a unique string/);
     },
     strategy: {
-      get size() {
+      size: function() {
         throw theError;
       },
-      shouldApplyBackpressure() {
+      shouldApplyBackpressure: function() {
         return true;
       }
     }
@@ -182,61 +224,44 @@ test('Throwing underlying source strategy.size getter', t => {
   t.equal(rs.state, 'errored', 'state should be errored');
 });
 
-test('Throwing underlying source strategy.size method', t => {
+test('Throwing underlying source strategy.shouldApplyBackpressure getter', function(t) {
   t.plan(2);
 
   const theError = new Error('a unique string');
   const rs = new ReadableStream({
-    start(enqueue) {
-      t.throws(() => enqueue('a'), /a unique string/);
+    start: function(enqueue) {
+      t.throws(function() { enqueue('a'); }, /a unique string/);
     },
-    strategy: {
-      size() {
-        throw theError;
+    strategy: Object.create(null, {
+      size: {
+        value: function() {
+          return 1;
+        }
       },
-      shouldApplyBackpressure() {
-        return true;
+      shouldApplyBackpressure: {
+        get: function() {
+          throw theError;
+        }
       }
-    }
+    })
   });
 
   t.equal(rs.state, 'errored', 'state should be errored');
 });
 
-test('Throwing underlying source strategy.shouldApplyBackpressure getter', t => {
+test('Throwing underlying source strategy.shouldApplyBackpressure method', function(t) {
   t.plan(2);
 
   const theError = new Error('a unique string');
   const rs = new ReadableStream({
-    start(enqueue) {
-      t.throws(() => enqueue('a'), /a unique string/);
+    start: function(enqueue) {
+      t.throws(function() { enqueue('a'); }, /a unique string/);
     },
     strategy: {
-      size() {
+      size: function() {
         return 1;
       },
-      get shouldApplyBackpressure() {
-        throw theError;
-      }
-    }
-  });
-
-  t.equal(rs.state, 'errored', 'state should be errored');
-});
-
-test('Throwing underlying source strategy.shouldApplyBackpressure method', t => {
-  t.plan(2);
-
-  const theError = new Error('a unique string');
-  const rs = new ReadableStream({
-    start(enqueue) {
-      t.throws(() => enqueue('a'), /a unique string/);
-    },
-    strategy: {
-      size() {
-        return 1;
-      },
-      shouldApplyBackpressure() {
+      shouldApplyBackpressure: function() {
         throw theError;
       }
     }

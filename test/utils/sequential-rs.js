@@ -1,12 +1,18 @@
-import SequentialPullSource from './sequential-pull-source';
 
-export default function sequentialReadableStream(limit, options) {
+'use strict';
+
+var ReadableStream = require('../../lib/readable-stream').ReadableStream;
+var SequentialPullSource = require('./sequential-pull-source');
+
+module.exports = sequentialReadableStream;
+
+function sequentialReadableStream(limit, options) {
   const sequentialSource = new SequentialPullSource(limit, options);
 
   const stream = new ReadableStream({
-    start() {
-      return new Promise((resolve, reject) => {
-        sequentialSource.open(err => {
+    start: function() {
+      return new Promise(function(resolve, reject) {
+        sequentialSource.open(function(err) {
           if (err) {
             reject(err);
           }
@@ -15,13 +21,13 @@ export default function sequentialReadableStream(limit, options) {
       });
     },
 
-    pull(enqueue, close) {
-      return new Promise((resolve, reject) => {
-        sequentialSource.read((err, done, chunk) => {
+    pull: function(enqueue, close) {
+      return new Promise(function(resolve, reject) {
+        sequentialSource.read(function(err, done, chunk) {
           if (err) {
             reject(err);
           } else if (done) {
-            sequentialSource.close(err => {
+            sequentialSource.close(function(err) {
               if (err) {
                 reject(err);
               }
@@ -40,4 +46,4 @@ export default function sequentialReadableStream(limit, options) {
   stream.source = sequentialSource;
 
   return stream;
-};
+}

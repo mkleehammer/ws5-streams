@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A hand-port of the WHATWG Streams reference implementation to ES5",
   "scripts": {
-    "test": "node --harmony node_modules/tape/bin/tape ./test/readable-stream.js"
+    "test": "node --harmony node_modules/tape/bin/tape ./test/*.js"
   },
   "keywords": [
     "streams",

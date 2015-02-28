@@ -1,33 +1,41 @@
+
+'use strict';
+
+var WritableStream = require('../lib/writable-stream').WritableStream;
+var ReadableStream = require('../lib/readable-stream').ReadableStream;
+
+var CountQueuingStrategy = require('../lib/count-queuing-strategy');
+
 const test = require('tape-catch');
 
-test('Can construct a CountQueuingStrategy with a valid high water mark', t => {
+test('Can construct a CountQueuingStrategy with a valid high water mark', function(t) {
   const strategy = new CountQueuingStrategy({ highWaterMark: 4 });
 
   t.end();
 });
 
-test('Gives a RangeError when the number is negative', t => {
-  t.throws(() => new CountQueuingStrategy({ highWaterMark: -4 }),
+test('Gives a RangeError when the number is negative', function(t) {
+  t.throws(function() { new CountQueuingStrategy({ highWaterMark: -4 }); },
            /RangeError/,
            'throws for { highWaterMark: -4 }');
 
-  t.throws(() => new CountQueuingStrategy({ highWaterMark: '-4' }),
+           t.throws(function() { new CountQueuingStrategy({ highWaterMark: '-4' }); },
            /RangeError/,
            'throws for { highWaterMark: \'-4\' }');
 
   t.end();
 });
 
-test('Can construct a readable stream with a valid CountQueuingStrategy', t => {
-  t.doesNotThrow(() => new ReadableStream({ strategy: new CountQueuingStrategy({ highWaterMark: 4 }) }));
+test('Can construct a readable stream with a valid CountQueuingStrategy', function(t) {
+  t.doesNotThrow(function() { new ReadableStream({ strategy: new CountQueuingStrategy({ highWaterMark: 4 }) }); });
 
   t.end();
 });
 
-test('Correctly governs the return value of a ReadableStream\'s enqueue function (HWM = 0)', t => {
+test('Correctly governs the return value of a ReadableStream\'s enqueue function (HWM = 0)', function(t) {
   let enqueue;
   const rs = new ReadableStream({
-    start(enqueue_) { enqueue = enqueue_; },
+    start: function(enqueue_) { enqueue = enqueue_; },
     strategy: new CountQueuingStrategy({ highWaterMark: 0 })
   });
 
@@ -51,10 +59,10 @@ test('Correctly governs the return value of a ReadableStream\'s enqueue function
   t.end();
 });
 
-test('Correctly governs the return value of a ReadableStream\'s enqueue function (HWM = 1)', t => {
+test('Correctly governs the return value of a ReadableStream\'s enqueue function (HWM = 1)', function(t) {
   let enqueue;
   const rs = new ReadableStream({
-    start(enqueue_) { enqueue = enqueue_; },
+    start: function(enqueue_) { enqueue = enqueue_; },
     strategy: new CountQueuingStrategy({ highWaterMark: 1 })
   });
 
@@ -78,10 +86,10 @@ test('Correctly governs the return value of a ReadableStream\'s enqueue function
   t.end();
 });
 
-test('Correctly governs the return value of a ReadableStream\'s enqueue function (HWM = 4)', t => {
+test('Correctly governs the return value of a ReadableStream\'s enqueue function (HWM = 4)', function(t) {
   let enqueue;
   const rs = new ReadableStream({
-    start(enqueue_) { enqueue = enqueue_; },
+    start: function(enqueue_) { enqueue = enqueue_; },
     strategy: new CountQueuingStrategy({ highWaterMark: 4 })
   });
 
@@ -110,23 +118,23 @@ test('Correctly governs the return value of a ReadableStream\'s enqueue function
   t.end();
 });
 
-test('Can construct a writable stream with a valid CountQueuingStrategy', t => {
-  t.doesNotThrow(() => new WritableStream({ strategy: new CountQueuingStrategy({ highWaterMark: 4 }) }));
+test('Can construct a writable stream with a valid CountQueuingStrategy', function(t) {
+  t.doesNotThrow(function() { new WritableStream({ strategy: new CountQueuingStrategy({ highWaterMark: 4 }) }); });
 
   t.end();
 });
 
-test('Correctly governs the value of a WritableStream\'s state property (HWM = 0)', t => {
+test('Correctly governs the value of a WritableStream\'s state property (HWM = 0)', function(t) {
   const dones = Object.create(null);
 
   const ws = new WritableStream({
-    write(chunk) {
-      return new Promise(resolve => dones[chunk] = resolve);
+    write: function(chunk) {
+      return new Promise(function(resolve) { dones[chunk] = resolve; });
     },
     strategy: new CountQueuingStrategy({ highWaterMark: 0 })
   });
 
-  setTimeout(() => {
+  setTimeout(function()  {
     t.equal(ws.state, 'writable', 'After 0 writes, 0 of which finished, state should be \'writable\'');
 
     const writePromiseA = ws.write('a');
@@ -136,18 +144,18 @@ test('Correctly governs the value of a WritableStream\'s state property (HWM = 0
     t.equal(ws.state, 'waiting', 'After 2 writes, 0 of which finished, state should be \'waiting\'');
 
     dones.a();
-    writePromiseA.then(() => {
+    writePromiseA.then(function() {
       t.equal(ws.state, 'waiting', 'After 2 writes, 1 of which finished, state should be \'waiting\'');
 
       dones.b();
-      return writePromiseB.then(() => {
+      return writePromiseB.then(function() {
         t.equal(ws.state, 'writable', 'After 2 writes, 2 of which finished, state should be \'writable\'');
 
         const writePromiseC = ws.write('c');
         t.equal(ws.state, 'waiting', 'After 3 writes, 2 of which finished, state should be \'waiting\'');
 
         dones.c();
-        return writePromiseC.then(() => {
+        return writePromiseC.then(function() {
           t.equal(ws.state, 'writable', 'After 3 writes, 3 of which finished, state should be \'writable\'');
 
           t.end();
@@ -158,17 +166,17 @@ test('Correctly governs the value of a WritableStream\'s state property (HWM = 0
   }, 0);
 });
 
-test('Correctly governs the value of a WritableStream\'s state property (HWM = 4)', t => {
+test('Correctly governs the value of a WritableStream\'s state property (HWM = 4)', function(t) {
   const dones = Object.create(null);
 
   const ws = new WritableStream({
-    write(chunk) {
-      return new Promise(resolve => dones[chunk] = resolve);
+    write: function(chunk) {
+      return new Promise(function(resolve) { dones[chunk] = resolve; });
     },
     strategy: new CountQueuingStrategy({ highWaterMark: 4 })
   });
 
-  setTimeout(() => {
+  setTimeout(function() {
     t.equal(ws.state, 'writable', 'After 0 writes, 0 of which finished, state should be \'writable\'');
 
     const writePromiseA = ws.write('a');
@@ -193,22 +201,22 @@ test('Correctly governs the value of a WritableStream\'s state property (HWM = 4
     t.equal(ws.state, 'waiting', 'After 7 writes, 0 of which finished, state should be \'waiting\'');
 
     dones.a();
-    writePromiseA.then(() => {
+    writePromiseA.then(function() {
       t.equal(ws.state, 'waiting', 'After 7 writes, 1 of which finished, state should be \'waiting\'');
 
       dones.b();
-      return writePromiseB.then(() => {
+      return writePromiseB.then(function()  {
         t.equal(ws.state, 'waiting', 'After 7 writes, 2 of which finished, state should be \'waiting\'');
 
         dones.c();
-        return writePromiseC.then(() => {
+        return writePromiseC.then(function() {
           t.equal(ws.state, 'writable', 'After 7 writes, 3 of which finished, state should be \'writable\'');
 
           ws.write('h');
           t.equal(ws.state, 'waiting', 'After 8 writes, 3 of which finished, state should be \'waiting\'');
 
           dones.d();
-          return writePromiseD.then(() => {
+          return writePromiseD.then(function() {
             t.equal(ws.state, 'writable', 'After 8 writes, 4 of which finished, state should be \'writable\'');
 
             ws.write('i');

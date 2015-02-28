@@ -1,11 +1,31 @@
+
+'use strict';
+
+var WritableStream = require('../lib/writable-stream').WritableStream;
+
 const test = require('tape-catch');
 
-test('Throwing underlying sink start getter', t => {
+test('Throwing underlying sink start getter', function(t) {
   const theError = new Error('a unique string');
 
-  t.throws(() => {
+  t.throws(function() {
+    new WritableStream(Object.create(null, {
+      start: {
+        get: function() {
+          throw theError;
+        }
+      }
+    }));
+  }, /a unique string/);
+  t.end();
+});
+
+test('Throwing underlying sink start method', function(t) {
+  const theError = new Error('a unique string');
+
+  t.throws(function()  {
     new WritableStream({
-      get start() {
+      start: function() {
         throw theError;
       }
     });
@@ -13,192 +33,209 @@ test('Throwing underlying sink start getter', t => {
   t.end();
 });
 
-test('Throwing underlying sink start method', t => {
-  const theError = new Error('a unique string');
+test('Throwing underlying source write getter', function(t) {
+  t.plan(2);
 
-  t.throws(() => {
-    new WritableStream({
-      start() {
-        throw theError;
+  const theError = new Error('a unique string');
+  const ws = new WritableStream(Object.create(null, {
+    write: { 
+      get: function() {
+      throw theError;
       }
-    });
-  }, /a unique string/);
-  t.end();
+    }
+  }));
+
+  ws.write('a').then(
+    function() { t.fail('write should not fulfill'); },
+    function(r) { t.equal(r, theError, 'write should reject with the thrown error'); }
+  );
+
+  ws.closed.then(
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
+  );
 });
 
-test('Throwing underlying source write getter', t => {
+test('Throwing underlying source write method', function(t) {
   t.plan(2);
 
   const theError = new Error('a unique string');
   const ws = new WritableStream({
-    get write() {
+    write: function() {
       throw theError;
     }
   });
 
   ws.write('a').then(
-    () => t.fail('write should not fulfill'),
-    r => t.equal(r, theError, 'write should reject with the thrown error')
+    function() { t.fail('write should not fulfill'); },
+    function(r) { t.equal(r, theError, 'write should reject with the thrown error'); }
   );
 
   ws.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
   );
 });
 
-test('Throwing underlying source write method', t => {
-  t.plan(2);
-
-  const theError = new Error('a unique string');
-  const ws = new WritableStream({
-    write() {
-      throw theError;
-    }
-  });
-
-  ws.write('a').then(
-    () => t.fail('write should not fulfill'),
-    r => t.equal(r, theError, 'write should reject with the thrown error')
-  );
-
-  ws.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying sink abort getter', t => {
+test('Throwing underlying sink abort getter', function(t) {
   t.plan(2);
 
   const theError = new Error('a unique string');
   const abortReason = new Error('different string');
-  const ws = new WritableStream({
-    get abort() {
-      throw theError;
-    }
-  });
-
-  ws.abort(abortReason).then(
-    () => t.fail('abort should not fulfill'),
-    r => t.equal(r, theError, 'abort should reject with the abort reason')
-  );
-
-  ws.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, abortReason, 'closed should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying sink abort method', t => {
-  t.plan(2);
-
-  const theError = new Error('a unique string');
-  const abortReason = new Error('different string');
-  const ws = new WritableStream({
-    abort() {
-      throw theError;
-    }
-  });
-
-  ws.abort(abortReason).then(
-    () => t.fail('abort should not fulfill'),
-    r => t.equal(r, theError, 'abort should reject with the abort reason')
-  );
-
-  ws.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, abortReason, 'closed should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying sink close getter', t => {
-  t.plan(1);
-
-  const theError = new Error('a unique string');
-  const ws = new WritableStream({
-    get close() {
-      throw theError;
-    }
-  });
-
-  ws.close().then(
-    () => t.fail('close should not fulfill'),
-    r => t.equal(r, theError, 'close should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying sink close method', t => {
-  t.plan(1);
-
-  const theError = new Error('a unique string');
-  const ws = new WritableStream({
-    close() {
-      throw theError;
-    }
-  });
-
-  ws.close().then(
-    () => t.fail('close should not fulfill'),
-    r => t.equal(r, theError, 'close should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying source strategy getter: initial construction', t => {
-  const theError = new Error('a unique string');
-
-  t.throws(() => {
-    new WritableStream({
-      get strategy() {
+  const ws = new WritableStream(Object.create(null, {
+    abort: {
+      get: function() {
         throw theError;
       }
-    });
+    }
+  }));
+
+  ws.abort(abortReason).then(
+    function() { t.fail('abort should not fulfill'); },
+    function(r) { t.equal(r, theError, 'abort should reject with the abort reason'); }
+  );
+
+  ws.closed.then(
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, abortReason, 'closed should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying sink abort method', function(t) {
+  t.plan(2);
+
+  const theError = new Error('a unique string');
+  const abortReason = new Error('different string');
+  const ws = new WritableStream({
+    abort: function() {
+      throw theError;
+    }
+  });
+
+  ws.abort(abortReason).then(
+    function() { t.fail('abort should not fulfill'); },
+    function(r) { t.equal(r, theError, 'abort should reject with the abort reason'); }
+  );
+
+  ws.closed.then(
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, abortReason, 'closed should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying sink close getter', function(t) {
+  t.plan(1);
+
+  const theError = new Error('a unique string');
+  const ws = new WritableStream(Object.create(null, {
+    close: {
+      get: function() {
+        throw theError;
+      }
+    }
+  }));
+
+  ws.close().then(
+    function() { t.fail('close should not fulfill'); },
+    function(r) { t.equal(r, theError, 'close should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying sink close method', function(t) {
+  t.plan(1);
+
+  const theError = new Error('a unique string');
+  const ws = new WritableStream({
+    close: function() {
+      throw theError;
+    }
+  });
+
+  ws.close().then(
+    function() { t.fail('close should not fulfill'); },
+    function(r) { t.equal(r, theError, 'close should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying source strategy getter: initial construction', function(t) {
+  const theError = new Error('a unique string');
+
+  t.throws(function() {
+    new WritableStream(Object.create(null, {
+      strategy: {
+        get: function() {
+          throw theError;
+        }
+      }
+    }));
   }, /a unique string/);
   t.end();
 });
 
-test('Throwing underlying source strategy getter: first write', t => {
+test('Throwing underlying source strategy getter: first write', function(t) {
   t.plan(2);
 
   let counter = 0;
   const theError = new Error('a unique string');
-  const ws = new WritableStream({
-    get strategy() {
-      ++counter;
-      if (counter === 1) {
-        return {
-          size() {
-            return 1;
+  const ws = new WritableStream(Object.create(null, {
+    strategy: {
+      get: function() {
+        ++counter;
+        if (counter === 1) {
+          return {
+            size: function() {
+              return 1;
+            },
+            shouldApplyBackpressure: function() {
+              return true;
+            }
+          };
+        }
+
+        throw theError;
+      }
+    }
+  }));
+
+  ws.write('a').then(
+    function() { t.fail('write should not fulfill'); },
+    function(r) { t.equal(r, theError, 'write should reject with the thrown error'); }
+  );
+
+  ws.closed.then(
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying source strategy.size getter: initial construction', function(t) {
+  t.doesNotThrow(function() {
+    new WritableStream({
+      strategy: Object.create(null, {
+        size: {
+          get: function() {
+            throw new Error('boo');
           },
-          shouldApplyBackpressure() {
+        },
+        shouldApplyBackpressure: {
+          value: function() {
             return true;
           }
-        };
-      }
-
-      throw theError;
-    }
+        }
+      })
+    });
   });
-
-  ws.write('a').then(
-    () => t.fail('write should not fulfill'),
-    r => t.equal(r, theError, 'write should reject with the thrown error')
-  );
-
-  ws.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
-  );
+  t.end();
 });
 
-test('Throwing underlying source strategy.size getter: initial construction', t => {
-  t.doesNotThrow(() => {
+test('Throwing underlying source strategy.size method: initial construction', function(t) {
+  t.doesNotThrow(function() {
     new WritableStream({
       strategy: {
-        get size() {
+        size: function() {
           throw new Error('boo');
         },
-        shouldApplyBackpressure() {
+        shouldApplyBackpressure: function() {
           return true;
         }
       }
@@ -207,102 +244,90 @@ test('Throwing underlying source strategy.size getter: initial construction', t 
   t.end();
 });
 
-test('Throwing underlying source strategy.size method: initial construction', t => {
-  t.doesNotThrow(() => {
-    new WritableStream({
-      strategy: {
-        size() {
-          throw new Error('boo');
-        },
-        shouldApplyBackpressure() {
-          return true;
-        }
-      }
-    });
-  });
-  t.end();
-});
-
-test('Throwing underlying source strategy.size getter: first write', t => {
+test('Throwing underlying source strategy.size getter: first write', function(t) {
   t.plan(2);
 
   const theError = new Error('a unique string');
   const ws = new WritableStream({
-    strategy: {
-      get size() {
-        throw theError;
-      },
-      shouldApplyBackpressure() {
-        return true;
-      }
-    }
-  });
-
-  ws.write('a').then(
-    () => t.fail('write should not fulfill'),
-    r => t.equal(r, theError, 'write should reject with the thrown error')
-  );
-
-  ws.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying source strategy.size method: first write', t => {
-  t.plan(2);
-
-  const theError = new Error('a unique string');
-  const ws = new WritableStream({
-    strategy: {
-      size() {
-        throw theError;
-      },
-      shouldApplyBackpressure() {
-        return true;
-      }
-    }
-  });
-
-  ws.write('a').then(
-    () => t.fail('write should not fulfill'),
-    r => t.equal(r, theError, 'write should reject with the thrown error')
-  );
-
-  ws.closed.then(
-    () => t.fail('closed should not fulfill'),
-    r => t.equal(r, theError, 'closed should reject with the thrown error')
-  );
-});
-
-test('Throwing underlying source strategy.shouldApplyBackpressure getter: initial construction', t => {
-  const theError = new Error('a unique string');
-
-  t.throws(() => {
-    new WritableStream({
-      strategy: {
-        size() {
-          return 1;
-        },
-        get shouldApplyBackpressure() {
+    strategy: Object.create(null, {
+      size: {
+        get: function() {
           throw theError;
+        },
+      },
+      shouldApplyBackpressure: {
+        value: function() {
+          return true;
         }
       }
+    })
+  });
+
+  ws.write('a').then(
+    function() { t.fail('write should not fulfill'); },
+    function(r) { t.equal(r, theError, 'write should reject with the thrown error'); }
+  );
+
+  ws.closed.then(
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying source strategy.size method: first write', function(t) {
+  t.plan(2);
+
+  const theError = new Error('a unique string');
+  const ws = new WritableStream({
+    strategy: {
+      size: function() {
+        throw theError;
+      },
+      shouldApplyBackpressure: function() {
+        return true;
+      }
+    }
+  });
+
+  ws.write('a').then(
+    function() { t.fail('write should not fulfill'); },
+    function(r) { t.equal(r, theError, 'write should reject with the thrown error'); }
+  );
+
+  ws.closed.then(
+    function() { t.fail('closed should not fulfill'); },
+    function(r) { t.equal(r, theError, 'closed should reject with the thrown error'); }
+  );
+});
+
+test('Throwing underlying source strategy.shouldApplyBackpressure getter: initial construction', function(t) {
+  const theError = new Error('a unique string');
+
+  t.throws(function() {
+    new WritableStream({
+      strategy: Object.create(null, {
+        size: {
+          get: function() { return 1; }
+        },
+        shouldApplyBackpressure: {
+          get: function() { throw theError; }
+        }
+      })
     });
   }, /a unique string/);
   t.end();
 });
 
-test('Throwing underlying source strategy.shouldApplyBackpressure method: initial construction', t => {
+test('Throwing underlying source strategy.shouldApplyBackpressure method: initial construction', function(t) {
   const theError = new Error('a unique string');
 
-  t.throws(() => {
+  t.throws(function() {
     new WritableStream({
       strategy: {
-        size() {
+        size: function() {
           return 1;
         },
-        shouldApplyBackpressure() {
+        shouldApplyBackpressure: function() {
           throw theError;
         }
       }

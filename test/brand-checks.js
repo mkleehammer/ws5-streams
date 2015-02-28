@@ -1,9 +1,18 @@
+
+'use strict';
+
+var WritableStream = require('../lib/writable-stream').WritableStream;
+var ReadableStream = require('../lib/readable-stream').ReadableStream;
+
+var ByteLengthQueuingStrategy = require('../lib/byte-length-queuing-strategy');
+var CountQueuingStrategy = require('../lib/count-queuing-strategy');
+
 const test = require('tape-catch');
 
 let ExclusiveStreamReader;
 
-test('Can get the ExclusiveStreamReader constructor indirectly', t => {
-  t.doesNotThrow(() => {
+test('Can get the ExclusiveStreamReader constructor indirectly', function(t) {
+  t.doesNotThrow(function() {
     // It's not exposed globally, but we test a few of its properties here.
     ExclusiveStreamReader = (new ReadableStream()).getReader().constructor;
   });
@@ -11,16 +20,16 @@ test('Can get the ExclusiveStreamReader constructor indirectly', t => {
 });
 
 function fakeReadableStream() {
-  return {
-    get closed() { return Promise.resolve(); },
-    get ready() { return Promise.resolve(); },
-    get state() { return 'closed' },
-    cancel(reason) { return Promise.resolve(); },
-    getReader() { return new ExclusiveStreamReader(new ReadableStream()); },
-    pipeThrough({ writable, readable }, options) { return readable; },
-    pipeTo(dest, { preventClose, preventAbort, preventCancel } = {}) { return Promise.resolve(); },
-    read() { return ''; }
-  };
+  return Object.create(null, {
+    closed: { get: function() { return Promise.resolve(); } },
+    ready: { get: function() { return Promise.resolve(); } },
+    state: { get: function() { return 'closed'; } },
+    cancel: { value: function(reason) { return Promise.resolve(); } },
+    getReader: { value: function() { return new ExclusiveStreamReader(new ReadableStream()); } },
+    pipeThrough: { value: function(pair, options) { return pair.readable; } },
+    pipeTo: { value: function(dest, options) { return Promise.resolve(); } },
+    read: { value: function() { return ''; } }
+  });
 }
 
 function realReadableStream() {
@@ -28,14 +37,14 @@ function realReadableStream() {
 }
 
 function fakeWritableStream() {
-  return {
-    get closed() { return Promise.resolve(); },
-    get ready() { return Promise.resolve(); },
-    get state() { return 'closed' },
-    abort(reason) { return Promise.resolve(); },
-    close() { return Promise.resolve(); },
-    write(chunk) { return Promise.resolve(); }
-  };
+  return Object.create(null, {
+    closed: { get: function() { return Promise.resolve(); } },
+    ready: { get: function() { return Promise.resolve(); } },
+    state: { get: function() { return 'closed'; } },
+    abort: { value: function(reason) { return Promise.resolve(); } },
+    close: { value: function() { return Promise.resolve(); } },
+    write: { value: function(chunk) { return Promise.resolve(); } }
+  });
 }
 
 function realWritableStream() {
@@ -43,23 +52,23 @@ function realWritableStream() {
 }
 
 function fakeExclusiveStreamReader() {
-  return {
-    get closed() { return Promise.resolve(); },
-    get isActive() { return false; },
-    get ready() { return Promise.resolve(); },
-    get state() { return 'closed' },
-    cancel(reason) { return Promise.resolve(); },
-    read() { return ''; },
-    releaseLock() { return; }
-  };
+  return Object.create(null, {
+    closed: { get: function() { return Promise.resolve(); } },
+    isActive: { get: function() { return false; } },
+    ready: { get: function() { return Promise.resolve(); } },
+    state: { get: function() { return 'closed'; } },
+    cancel: { value: function(reason) { return Promise.resolve(); } },
+    read: { value: function() { return ''; } },
+    releaseLock: { value: function() { return; } }
+  });
 }
 
 function fakeByteLengthQueuingStrategy() {
   return {
-    shouldApplyBackpressure(queueSize) {
+    shouldApplyBackpressure: function(queueSize) {
       return queueSize > 1;
     },
-    size(chunk) {
+    size: function(chunk) {
       return chunk.byteLength;
     }
   };
@@ -71,10 +80,10 @@ function realByteLengthQueuingStrategy() {
 
 function fakeCountQueuingStrategy() {
   return {
-    shouldApplyBackpressure(queueSize) {
+    shouldApplyBackpressure: function(queueSize) {
       return queueSize > 1;
     },
-    size(chunk) {
+    size: function(chunk) {
       return 1;
     }
   };
@@ -88,8 +97,8 @@ function getterRejects(t, obj, getterName, target) {
   const getter = Object.getOwnPropertyDescriptor(obj, getterName).get;
 
   getter.call(target).then(
-    () => t.fail(getterName + ' should not fulfill'),
-    e => t.equal(e.constructor, TypeError, getterName + ' should reject with a TypeError')
+    function() { t.fail(getterName + ' should not fulfill'); },
+    function(e) { t.equal(e.constructor, TypeError, getterName + ' should reject with a TypeError'); }
   );
 }
 
@@ -97,60 +106,60 @@ function methodRejects(t, obj, methodName, target) {
   const method = obj[methodName];
 
   method.call(target).then(
-    () => t.fail(methodName + ' should not fulfill'),
-    e => t.equal(e.constructor, TypeError, methodName + ' should reject with a TypeError')
+    function() { t.fail(methodName + ' should not fulfill'); },
+    function(e) { t.equal(e.constructor, TypeError, methodName + ' should reject with a TypeError'); }
   );
 }
 
 function getterThrows(t, obj, getterName, target) {
   const getter = Object.getOwnPropertyDescriptor(obj, getterName).get;
 
-  t.throws(() => getter.call(target), /TypeError/, getterName + ' should throw a TypeError');
+  t.throws(function() { getter.call(target); }, /TypeError/, getterName + ' should throw a TypeError');
 }
 
 function methodThrows(t, obj, methodName, target) {
   const method = obj[methodName];
 
-  t.throws(() => method.call(target), /TypeError/, methodName + ' should throw a TypeError');
+  t.throws(function() { method.call(target); }, /TypeError/, methodName + ' should throw a TypeError');
 }
 
-test('ReadableStream.prototype.closed enforces a brand check', t => {
+test('ReadableStream.prototype.closed enforces a brand check', function(t) {
   t.plan(2);
   getterRejects(t, ReadableStream.prototype, 'closed', fakeReadableStream());
   getterRejects(t, ReadableStream.prototype, 'closed', realWritableStream());
 });
 
-test('ReadableStream.prototype.ready enforces a brand check', t => {
+test('ReadableStream.prototype.ready enforces a brand check', function(t) {
   t.plan(2);
   getterRejects(t, ReadableStream.prototype, 'ready', fakeReadableStream());
   getterRejects(t, ReadableStream.prototype, 'ready', realWritableStream());
 });
 
-test('ReadableStream.prototype.state enforces a brand check', t => {
+test('ReadableStream.prototype.state enforces a brand check', function(t) {
   t.plan(2);
   getterThrows(t, ReadableStream.prototype, 'state', fakeReadableStream());
   getterThrows(t, ReadableStream.prototype, 'state', realWritableStream());
 });
 
-test('ReadableStream.prototype.cancel enforces a brand check', t => {
+test('ReadableStream.prototype.cancel enforces a brand check', function(t) {
   t.plan(2);
   methodRejects(t, ReadableStream.prototype, 'cancel', fakeReadableStream());
   methodRejects(t, ReadableStream.prototype, 'cancel', realWritableStream());
 });
 
-test('ReadableStream.prototype.getReader enforces a brand check', t => {
+test('ReadableStream.prototype.getReader enforces a brand check', function(t) {
   t.plan(2);
   methodThrows(t, ReadableStream.prototype, 'getReader', fakeReadableStream());
   methodThrows(t, ReadableStream.prototype, 'getReader', realWritableStream());
 });
 
-test('ReadableStream.prototype.pipeThrough works generically on its this and its arguments', t => {
+test('ReadableStream.prototype.pipeThrough works generically on its this and its arguments', function(t) {
   t.plan(2);
 
   let pipeToArguments;
   const thisValue = {
-    pipeTo(...args) {
-      pipeToArguments = args;
+    pipeTo: function() {
+      pipeToArguments = Array.prototype.slice.call(arguments, 0);
     }
   };
 
@@ -162,107 +171,107 @@ test('ReadableStream.prototype.pipeThrough works generically on its this and its
   t.equal(result, input.readable, 'return value should be the passed readable property');
 });
 
-test('ReadableStream.prototype.pipeTo works generically on its this and its arguments', t => {
+test('ReadableStream.prototype.pipeTo works generically on its this and its arguments', function(t) {
   t.plan(1);
 
   // TODO: expand this with a full fake that records what happens to it?
 
-  t.doesNotThrow(() => ReadableStream.prototype.pipeTo.call(fakeReadableStream(), fakeWritableStream()));
+  t.doesNotThrow(function () { ReadableStream.prototype.pipeTo.call(fakeReadableStream(), fakeWritableStream()); });
 });
 
-test('ReadableStream.prototype.read enforces a brand check', t => {
+test('ReadableStream.prototype.read enforces a brand check', function(t) {
   t.plan(2);
   methodThrows(t, ReadableStream.prototype, 'read', fakeReadableStream());
   methodThrows(t, ReadableStream.prototype, 'read', realWritableStream());
 });
 
 
-test('ExclusiveStreamReader enforces a brand check on its argument', t => {
+test('ExclusiveStreamReader enforces a brand check on its argument', function(t) {
   t.plan(1);
-  t.throws(() => new ExclusiveStreamReader(fakeReadableStream()), /TypeError/, 'Contructing an ExclusiveStreamReader ' +
-    'should throw');
+  t.throws(function() { new ExclusiveStreamReader(fakeReadableStream()); }, /TypeError/, 'Contructing an ExclusiveStreamReader ' +
+           'should throw');
 });
 
-test('ExclusiveStreamReader.prototype.closed enforces a brand check', t => {
+test('ExclusiveStreamReader.prototype.closed enforces a brand check', function(t) {
   t.plan(1);
   getterRejects(t, ExclusiveStreamReader.prototype, 'closed', fakeExclusiveStreamReader());
 });
 
-test('ExclusiveStreamReader.prototype.isActive enforces a brand check', t => {
+test('ExclusiveStreamReader.prototype.isActive enforces a brand check', function(t) {
   t.plan(1);
   getterThrows(t, ExclusiveStreamReader.prototype, 'isActive', fakeExclusiveStreamReader());
 });
 
-test('ExclusiveStreamReader.prototype.ready enforces a brand check', t => {
+test('ExclusiveStreamReader.prototype.ready enforces a brand check', function(t) {
   t.plan(1);
   getterRejects(t, ExclusiveStreamReader.prototype, 'ready', fakeExclusiveStreamReader());
 });
 
-test('ExclusiveStreamReader.prototype.state enforces a brand check', t => {
+test('ExclusiveStreamReader.prototype.state enforces a brand check', function(t) {
   t.plan(1);
   getterThrows(t, ExclusiveStreamReader.prototype, 'state', fakeExclusiveStreamReader());
 });
 
-test('ExclusiveStreamReader.prototype.cancel enforces a brand check', t => {
+test('ExclusiveStreamReader.prototype.cancel enforces a brand check', function(t) {
   t.plan(1);
   methodRejects(t, ExclusiveStreamReader.prototype, 'cancel', fakeExclusiveStreamReader());
 });
 
-test('ExclusiveStreamReader.prototype.read enforces a brand check', t => {
+test('ExclusiveStreamReader.prototype.read enforces a brand check', function(t) {
   t.plan(1);
   methodThrows(t, ExclusiveStreamReader.prototype, 'read', fakeExclusiveStreamReader());
 });
 
-test('ExclusiveStreamReader.prototype.releaseLock enforces a brand check', t => {
+test('ExclusiveStreamReader.prototype.releaseLock enforces a brand check', function(t) {
   t.plan(1);
   methodThrows(t, ExclusiveStreamReader.prototype, 'releaseLock', fakeExclusiveStreamReader());
 });
 
 
-test('WritableStream.prototype.closed enforces a brand check', t => {
+test('WritableStream.prototype.closed enforces a brand check', function(t) {
   t.plan(2);
   getterRejects(t, WritableStream.prototype, 'closed', fakeWritableStream());
   getterRejects(t, WritableStream.prototype, 'closed', realReadableStream());
 });
 
-test('WritableStream.prototype.ready enforces a brand check', t => {
+test('WritableStream.prototype.ready enforces a brand check', function(t) {
   t.plan(2);
   getterRejects(t, WritableStream.prototype, 'ready', fakeWritableStream());
   getterRejects(t, WritableStream.prototype, 'ready', realReadableStream());
 });
 
-test('WritableStream.prototype.state enforces a brand check', t => {
+test('WritableStream.prototype.state enforces a brand check', function(t) {
   t.plan(2);
   getterThrows(t, WritableStream.prototype, 'state', fakeWritableStream());
   getterThrows(t, WritableStream.prototype, 'state', realReadableStream());
 });
 
-test('WritableStream.prototype.abort enforces a brand check', t => {
+test('WritableStream.prototype.abort enforces a brand check', function(t) {
   t.plan(2);
   methodRejects(t, WritableStream.prototype, 'abort', fakeWritableStream());
   methodRejects(t, WritableStream.prototype, 'abort', realReadableStream());
 });
 
-test('WritableStream.prototype.write enforces a brand check', t => {
+test('WritableStream.prototype.write enforces a brand check', function(t) {
   t.plan(2);
   methodRejects(t, WritableStream.prototype, 'write', fakeWritableStream());
   methodRejects(t, WritableStream.prototype, 'write', realReadableStream());
 });
 
-test('WritableStream.prototype.close enforces a brand check', t => {
+test('WritableStream.prototype.close enforces a brand check', function(t) {
   t.plan(2);
   methodRejects(t, WritableStream.prototype, 'close', fakeWritableStream());
   methodRejects(t, WritableStream.prototype, 'close', realReadableStream());
 });
 
 
-test('ByteLengthQueuingStrategy.prototype.shouldApplyBackpressure enforces a brand check', t => {
+test('ByteLengthQueuingStrategy.prototype.shouldApplyBackpressure enforces a brand check', function(t) {
   t.plan(2);
   methodThrows(t, ByteLengthQueuingStrategy.prototype, 'shouldApplyBackpressure', fakeByteLengthQueuingStrategy());
   methodThrows(t, ByteLengthQueuingStrategy.prototype, 'shouldApplyBackpressure', realCountQueuingStrategy());
 });
 
-test('ByteLengthQueuingStrategy.prototype.size should work generically on its this and its arguments', t => {
+test('ByteLengthQueuingStrategy.prototype.size should work generically on its this and its arguments', function(t) {
   t.plan(1);
   const thisValue = null;
   const returnValue = { 'returned from': 'byteLength getter' };
@@ -275,13 +284,13 @@ test('ByteLengthQueuingStrategy.prototype.size should work generically on its th
   t.equal(ByteLengthQueuingStrategy.prototype.size.call(thisValue, chunk), returnValue);
 });
 
-test('CountQueuingStrategy.prototype.shouldApplyBackpressure enforces a brand check', t => {
+test('CountQueuingStrategy.prototype.shouldApplyBackpressure enforces a brand check', function(t) {
   t.plan(2);
   methodThrows(t, CountQueuingStrategy.prototype, 'shouldApplyBackpressure', fakeCountQueuingStrategy());
   methodThrows(t, CountQueuingStrategy.prototype, 'shouldApplyBackpressure', realByteLengthQueuingStrategy());
 });
 
-test('CountQueuingStrategy.prototype.size should work generically on its this and its arguments', t => {
+test('CountQueuingStrategy.prototype.size should work generically on its this and its arguments', function(t) {
   t.plan(1);
   const thisValue = null;
   const chunk = {
