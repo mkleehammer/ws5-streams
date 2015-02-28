@@ -1,0 +1,8 @@
+{
+    "esnext": true,
+    "noyield": true,
+    "node": true,
+    "globals": { "r": false, "user": false, "config": false },
+    "eqnull" : true,
+    "newcap": false
+}
