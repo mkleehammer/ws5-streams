@@ -1,6 +1,10 @@
 {
-  "name": "whatwg-streams5",
+  "name": "ws5-streams",
   "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mkleehammer/ws5-streams.git"
+  },
   "description": "A hand-port of the WHATWG Streams reference implementation to ES5",
   "scripts": {
     "test": "node --harmony node_modules/tape/bin/tape ./test/*.js"
